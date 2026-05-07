@@ -4,19 +4,38 @@
     <title>High-Precision Volume Engine</title>
     <style>
         body { font-family: monospace; background: #050505; color: #00ff00; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .panel { background: #111; border: 1px solid #00ff00; padding: 25px; width: 550px; box-shadow: 0 0 20px #00ff0033; }
+        .panel { background: #111; border: 1px solid #00ff00; padding: 25px; width: 550px; box-shadow: 0 0 20px #00ff0033; box-sizing: border-box; }
         .row { margin-bottom: 15px; display: flex; flex-direction: column; }
         label { font-size: 10px; color: #008800; text-transform: uppercase; margin-bottom: 6px; }
-        input, select { background: #000; border: 1px solid #008800; color: #00ff00; padding: 10px; font-family: monospace; outline: none; }
+        input, select { background: #000; border: 1px solid #008800; color: #00ff00; padding: 10px; font-family: monospace; outline: none; box-sizing: border-box; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .bar-container { height: 25px; width: 100%; background: #000; border: 1px solid #004400; margin-top: 20px; position: relative; }
+        
+        /* Graph Styling */
+        .viz { height: 220px; width: 100%; border: 1px solid #004400; margin-bottom: 15px; background: #080808; position: relative; box-sizing: border-box; }
+        svg { height: 100%; width: 100%; overflow: visible; display: block; }
+        
+        /* Corrected Slider Styling */
+        input[type="range"] { 
+            appearance: none; 
+            width: 100%; /* Spans full width of parent padding-box */
+            background: #002200; 
+            height: 12px; 
+            margin: 25px 0; /* Vertical margin only to keep horizontal alignment */
+            cursor: pointer; 
+            display: block;
+        }
+        input[type="range"]::-webkit-slider-thumb { 
+            appearance: none; 
+            height: 25px; 
+            width: 12px; 
+            background: #00ff00; 
+            border: 1px solid #000; 
+        }
+
+        .bar-container { height: 25px; width: 100%; background: #000; border: 1px solid #004400; position: relative; box-sizing: border-box; }
         #volume_bar { height: 100%; width: 0%; background: #00ff00; box-shadow: 0 0 15px #00ff0066; }
         .output-box { border: 1px solid #008800; padding: 20px; text-align: center; margin-top: 15px; background: #000; }
         #db_readout { font-size: 3rem; font-weight: bold; }
-        .viz { height: 220px; width: 100%; border: 1px solid #004400; margin-bottom: 15px; background: #080808; position: relative; }
-        svg { height: 100%; width: 100%; overflow: visible; }
-        input[type="range"] { appearance: none; width: 100%; background: #002200; height: 12px; margin: 25px 0; cursor: pointer; }
-        input[type="range"]::-webkit-slider-thumb { appearance: none; height: 25px; width: 12px; background: #00ff00; border: 1px solid #000; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -51,6 +70,7 @@
     </div>
 
     <input type="range" id="slider" min="0" max="100" step="0.0000001" value="50">
+    
     <div class="bar-container"><div id="volume_bar"></div></div>
 
     <div class="output-box">
@@ -63,7 +83,6 @@
 const el = id => document.getElementById(id);
 
 function calculateDb(x) {
-    // Input values treated as floats
     const max = parseFloat(el('max_db').value);
     const min = parseFloat(el('min_db').value);
     const pDb = parseFloat(el('pivot_db').value);
@@ -76,7 +95,6 @@ function calculateDb(x) {
     if (mode === 'linear') {
         result = min + (val * (max - min));
     } else if (mode === 'log') {
-        // High-precision internal log calculation
         const currentDb = 20 * Math.log10(val || 1e-10); 
         result = Math.max(min, max + currentDb);
     } else {
@@ -85,18 +103,17 @@ function calculateDb(x) {
         let ratio;
 
         if (val <= pPos) {
-            const segmentVal = val / pPos;
+            const segmentVal = val / (pPos || 0.0001);
             const exp = mode === 's_curve' ? k : 1/k;
             ratio = pRatio * Math.pow(segmentVal, exp);
         } else {
-            const segmentVal = (val - pPos) / (1 - pPos);
+            const segmentVal = (val - pPos) / (1 - pPos || 0.0001);
             const exp = mode === 's_curve' ? 1/k : k;
             ratio = pRatio + (1 - pRatio) * Math.pow(segmentVal, exp);
         }
         result = min + (ratio * (max - min));
     }
 
-    // Force 7 digits of precision for internal return
     return parseFloat(result.toFixed(7));
 }
 
@@ -107,7 +124,6 @@ function update() {
     const max = parseFloat(el('max_db').value);
     const min = parseFloat(el('min_db').value);
 
-    // User output rounded to 2 decimal places
     el('db_readout').innerText = db.toFixed(2) + " dBFS";
     el('volume_bar').style.width = Math.max(0, Math.min(100, ((db - min) / (max - min)) * 100)) + "%";
 
@@ -146,4 +162,3 @@ update();
 </script>
 </body>
 </html>
-
