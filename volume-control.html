@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>High-Precision Volume Engine + Audio</title>
+    <title>Precision Volume Engine + Multi-Source</title>
     <style>
         body { font-family: monospace; background: #050505; color: #00ff00; padding: 20px; display: flex; flex-direction: column; align-items: center; }
         .panel { background: #111; border: 1px solid #00ff00; padding: 25px; width: 550px; box-shadow: 0 0 20px #00ff0033; box-sizing: border-box; }
@@ -9,27 +9,24 @@
         label { font-size: 10px; color: #008800; text-transform: uppercase; margin-bottom: 6px; }
         input, select { background: #000; border: 1px solid #008800; color: #00ff00; padding: 10px; font-family: monospace; outline: none; box-sizing: border-box; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .viz { height: 220px; width: 100%; border: 1px solid #004400; margin-bottom: 15px; background: #080808; position: relative; box-sizing: border-box; }
+        .viz { height: 180px; width: 100%; border: 1px solid #004400; margin-bottom: 15px; background: #080808; position: relative; box-sizing: border-box; }
         svg { height: 100%; width: 100%; overflow: visible; display: block; }
-        
-        input[type="range"] { appearance: none; width: 100%; background: #002200; height: 12px; margin: 25px 0; cursor: pointer; display: block; }
+        input[type="range"] { appearance: none; width: 100%; background: #002200; height: 12px; margin: 20px 0; cursor: pointer; display: block; }
         input[type="range"]::-webkit-slider-thumb { appearance: none; height: 25px; width: 12px; background: #00ff00; border: 1px solid #000; }
-
-        .bar-container { height: 25px; width: 100%; background: #000; border: 1px solid #004400; position: relative; box-sizing: border-box; }
+        .bar-container { height: 25px; width: 100%; background: #000; border: 1px solid #004400; position: relative; }
         #volume_bar { height: 100%; width: 0%; background: #00ff00; box-shadow: 0 0 15px #00ff0066; }
         .output-box { border: 1px solid #008800; padding: 20px; text-align: center; margin-top: 15px; background: #000; }
         #db_readout { font-size: 3rem; font-weight: bold; }
-        
         #audio_btn { width: 100%; padding: 15px; background: #003300; color: #00ff00; border: 1px solid #00ff00; cursor: pointer; font-family: monospace; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; }
-        #audio_btn:hover { background: #00ff00; color: #000; }
-        #audio_btn.active { background: #ff0000; color: #fff; border-color: #fff; }
+        #audio_btn.active { background: #ff0000; color: #fff; }
         .hidden { display: none !important; }
+        #file_input { margin-top: 10px; font-size: 10px; }
     </style>
 </head>
 <body>
 
 <div class="panel">
-    <button id="audio_btn">Start Audio Engine</button>
+    <button id="audio_btn">Start Engine</button>
     
     <div class="viz">
         <svg viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -41,24 +38,41 @@
         </svg>
     </div>
 
-    <div class="row">
-        <label>Algorithm Selection</label>
-        <select id="logic_type">
-            <option value="linear">Linear</option>
-            <option value="log">Logarithmic (50% = -6.02 dB)</option>
-            <option value="s_curve">S-Curve (Steep Middle)</option>
-            <option value="inv_sigmoid" selected>Inverse-Sigmoid (Flat Middle)</option>
-        </select>
+    <div class="grid">
+        <div class="row">
+            <label>Audio Source</label>
+            <select id="source_type">
+                <option value="40">40 Hz Sine</option>
+                <option value="80">80 Hz Sine</option>
+                <option value="160">160 Hz Sine</option>
+                <option value="320">320 Hz Sine</option>
+                <option value="640">640 Hz Sine</option>
+                <option value="1000">1 kHz Sine</option>
+                <option value="white">White Noise</option>
+                <option value="pink">Pink Noise</option>
+                <option value="uri">Local URI (File)</option>
+            </select>
+            <input type="file" id="file_input" class="hidden" accept="audio/*">
+        </div>
+        <div class="row">
+            <label>Algorithm</label>
+            <select id="logic_type">
+                <option value="linear">Linear</option>
+                <option value="log">Logarithmic</option>
+                <option value="s_curve">S-Curve</option>
+                <option value="inv_sigmoid" selected>Inv-Sigmoid</option>
+            </select>
+        </div>
     </div>
 
     <div class="grid">
         <div class="row"><label>Min dBFS</label><input type="number" id="min_db" value="-138.47"></div>
-        <div class="row"><label>Max dBFS Limit</label><input type="number" id="max_db" value="-8.0"></div>
-        <div class="row pivot-ui"><label>Pivot Target (dBFS)</label><input type="number" id="pivot_db" value="-40.0"></div>
-        <div class="row pivot-ui"><label>Pivot Position (%)</label><input type="number" id="pivot_pos" value="50"></div>
+        <div class="row"><label>Max dBFS</label><input type="number" id="max_db" value="-8.0"></div>
+        <div class="row pivot-ui"><label>Pivot (dBFS)</label><input type="number" id="pivot_db" value="-40.0"></div>
+        <div class="row pivot-ui"><label>Pivot Pos (%)</label><input type="number" id="pivot_pos" value="50"></div>
     </div>
 
-    <input type="range" id="slider" min="0" max="100" step="0.0000001" value="50">
+    <input type="range" id="slider" min="0" max="100" step="0.00001" value="50">
     <div class="bar-container"><div id="volume_bar"></div></div>
 
     <div class="output-box">
@@ -69,121 +83,134 @@
 
 <script>
 const el = id => document.getElementById(id);
+let audioCtx, currentSource, gainNode, isRunning = false;
 
-// --- Audio Logic ---
-let audioCtx, osc, gainNode, isRunning = false;
+// --- Noise Generation ---
+function createNoiseBuffer(type) {
+    const bufferSize = 2 * audioCtx.sampleRate;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const output = buffer.getChannelData(0);
+    if (type === 'white') {
+        for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+    } else {
+        let b0, b1, b2, b3, b4, b5, b6;
+        b0 = b1 = b2 = b3 = b4 = b5 = b6 = 0.0;
+        for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            b0 = 0.99886 * b0 + white * 0.0555179;
+            b1 = 0.99332 * b1 + white * 0.0750312;
+            b2 = 0.96900 * b2 + white * 0.1538520;
+            b3 = 0.86650 * b3 + white * 0.3104856;
+            b4 = 0.55000 * b4 + white * 0.5329522;
+            b5 = -0.7616 * b5 - white * 0.0168980;
+            output[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+            output[i] *= 0.11; b6 = white * 0.115926;
+        }
+    }
+    return buffer;
+}
+
+// --- Audio Source Controller ---
+async function setupSource() {
+    if (currentSource) { currentSource.stop(); currentSource.disconnect(); }
+    const type = el('source_type').value;
+    
+    if (!isNaN(type)) { // Sines
+        currentSource = audioCtx.createOscillator();
+        currentSource.frequency.setValueAtTime(parseFloat(type), audioCtx.currentTime);
+    } else if (type === 'white' || type === 'pink') {
+        currentSource = audioCtx.createBufferSource();
+        currentSource.buffer = createNoiseBuffer(type);
+        currentSource.loop = true;
+    } else if (type === 'uri') {
+        const file = el('file_input').files[0];
+        if (!file) return;
+        const arrayBuffer = await file.arrayBuffer();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        currentSource = audioCtx.createBufferSource();
+        currentSource.buffer = audioBuffer;
+        currentSource.loop = true;
+    }
+    
+    currentSource.connect(gainNode);
+    if (isRunning) currentSource.start();
+}
 
 function toggleAudio() {
     if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         gainNode = audioCtx.createGain();
-        osc = audioCtx.createOscillator();
-        
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(440, audioCtx.currentTime); // A4 note
-        
-        osc.connect(gainNode).connect(audioCtx.destination);
-        osc.start();
+        gainNode.connect(audioCtx.destination);
     }
-
     if (!isRunning) {
-        audioCtx.resume();
-        el('audio_btn').innerText = "Stop Audio Engine";
-        el('audio_btn').classList.add('active');
         isRunning = true;
-        update(); 
+        setupSource();
+        audioCtx.resume();
+        el('audio_btn').innerText = "Stop Engine";
+        el('audio_btn').classList.add('active');
     } else {
-        audioCtx.suspend();
-        el('audio_btn').innerText = "Start Audio Engine";
-        el('audio_btn').classList.remove('active');
         isRunning = false;
+        audioCtx.suspend();
+        el('audio_btn').innerText = "Start Engine";
+        el('audio_btn').classList.remove('active');
     }
+    update();
 }
 
-function applyGain(dbfs) {
-    if (!gainNode || !audioCtx) return;
-    // Formula: gain = 10^(dB/20)
-    const linearGain = Math.pow(10, dbfs / 20);
-    // Smooth transition (0.015s time constant) to avoid clicking
-    gainNode.gain.setTargetAtTime(linearGain, audioCtx.currentTime, 0.015);
-}
-
-// --- Engine Logic ---
+// --- Engine Math & UI ---
 function calculateDb(x) {
-    const max = parseFloat(el('max_db').value);
-    const min = parseFloat(el('min_db').value);
-    const pDb = parseFloat(el('pivot_db').value);
-    const pPos = parseFloat(el('pivot_pos').value) / 100;
-    const mode = el('logic_type').value;
-    const val = x / 100;
-    
+    const max = parseFloat(el('max_db').value), min = parseFloat(el('min_db').value);
+    const pDb = parseFloat(el('pivot_db').value), pPos = parseFloat(el('pivot_pos').value) / 100;
+    const mode = el('logic_type').value, val = x / 100;
     let result;
-    if (mode === 'linear') {
-        result = min + (val * (max - min));
-    } else if (mode === 'log') {
-        const currentDb = 20 * Math.log10(val || 1e-10); 
-        result = Math.max(min, max + currentDb);
-    } else {
-        const pRatio = (pDb - min) / (max - min);
-        const k = 2.5; 
+
+    if (mode === 'linear') result = min + (val * (max - min));
+    else if (mode === 'log') result = Math.max(min, max + (20 * Math.log10(val || 1e-10)));
+    else {
+        const pRatio = (pDb - min) / (max - min), k = 2.5;
         let ratio;
         if (val <= pPos) {
-            const segmentVal = val / (pPos || 0.0001);
-            const exp = mode === 's_curve' ? k : 1/k;
-            ratio = pRatio * Math.pow(segmentVal, exp);
+            ratio = pRatio * Math.pow(val / (pPos || 0.001), mode === 's_curve' ? k : 1/k);
         } else {
-            const segmentVal = (val - pPos) / (1 - pPos || 0.0001);
-            const exp = mode === 's_curve' ? 1/k : k;
-            ratio = pRatio + (1 - pRatio) * Math.pow(segmentVal, exp);
+            ratio = pRatio + (1 - pRatio) * Math.pow((val - pPos) / (1 - pPos || 0.001), mode === 's_curve' ? 1/k : k);
         }
         result = min + (ratio * (max - min));
     }
-    return parseFloat(result.toFixed(7));
+    return result;
 }
 
 function update() {
-    const x = parseFloat(el('slider').value);
-    const mode = el('logic_type').value;
-    const db = calculateDb(x);
-    const max = parseFloat(el('max_db').value);
-    const min = parseFloat(el('min_db').value);
-
+    const x = parseFloat(el('slider').value), db = calculateDb(x);
+    const max = parseFloat(el('max_db').value), min = parseFloat(el('min_db').value);
     el('db_readout').innerText = db.toFixed(2) + " dBFS";
     el('volume_bar').style.width = Math.max(0, Math.min(100, ((db - min) / (max - min)) * 100)) + "%";
     
-    if (isRunning) applyGain(db);
+    if (isRunning && gainNode) {
+        gainNode.gain.setTargetAtTime(Math.pow(10, db / 20), audioCtx.currentTime, 0.015);
+    }
 
     let d = "M ";
     for (let i = 0; i <= 100; i++) {
-        const val = calculateDb(i);
-        const y = 100 - (((val - min) / (max - min)) * 100);
+        const y = 100 - (((calculateDb(i) - min) / (max - min)) * 100);
         d += `${i},${y} `;
         if (Math.abs(i - x) < 0.5) {
-            const currentY = 100 - (((db - min) / (max - min)) * 100);
             el('tracker_v').setAttribute('x1', x); el('tracker_v').setAttribute('x2', x);
-            el('tracker_dot').setAttribute('cx', x); el('tracker_dot').setAttribute('cy', currentY);
+            el('tracker_dot').setAttribute('cx', x); el('tracker_dot').setAttribute('cy', 100 - (((db - min) / (max - min)) * 100));
         }
     }
     el('curve_path').setAttribute('d', d);
-
-    const isCustom = (mode === 's_curve' || mode === 'inv_sigmoid');
+    
+    const isCustom = ['s_curve', 'inv_sigmoid'].includes(el('logic_type').value);
     document.querySelectorAll('.pivot-ui').forEach(ui => ui.classList.toggle('hidden', !isCustom));
-    if (isCustom) {
-        const pDb = parseFloat(el('pivot_db').value);
-        const pPos = parseFloat(el('pivot_pos').value);
-        el('pivot_point').style.display = 'block';
-        el('pivot_point').setAttribute('cx', pPos);
-        el('pivot_point').setAttribute('cy', 100 - (((pDb - min) / (max - min)) * 100));
-    } else {
-        el('pivot_point').style.display = 'none';
-    }
+    el('file_input').classList.toggle('hidden', el('source_type').value !== 'uri');
 }
 
 el('audio_btn').addEventListener('click', toggleAudio);
-['slider', 'min_db', 'max_db', 'pivot_db', 'pivot_pos', 'logic_type'].forEach(id => {
-    el(id).addEventListener('input', update);
-});
+el('source_type').addEventListener('change', () => { if(isRunning) setupSource(); update(); });
+el('file_input').addEventListener('change', () => { if(isRunning) setupSource(); });
+['slider', 'min_db', 'max_db', 'pivot_db', 'pivot_pos', 'logic_type'].forEach(id => el(id).addEventListener('input', update));
 update();
 </script>
 </body>
 </html>
+
