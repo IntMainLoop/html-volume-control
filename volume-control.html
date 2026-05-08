@@ -1,6 +1,246 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <title>Volume Engine V19 - Universal Input Fixed</title>
+    <style>
+        body { font-family: monospace; background: #050505; color: #00ff00; padding: 10px; display: flex; flex-direction: column; align-items: center; margin: 0; }
+        .panel { background: #111; border: 1px solid #00ff00; padding: 15px; width: 520px; box-shadow: 0 0 20px #00ff0033; box-sizing: border-box; overflow: hidden; }
+        .row { margin-bottom: 8px; display: flex; flex-direction: column; }
+        label { font-size: 9px; color: #008800; text-transform: uppercase; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        label:hover { overflow: visible; background: #111; position: relative; z-index: 100; width: max-content; }
+        input, select { background: #000; border: 1px solid #008800; color: #00ff00; padding: 6px; font-size: 11px; font-family: monospace; outline: none; box-sizing: border-box; width: 100%; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .master-readout { border: 1px solid #008800; padding: 10px; text-align: center; margin-bottom: 10px; background: #000; }
+        #db_readout { font-size: 2.2rem; font-weight: bold; line-height: 1; }
+        .bar-container { height: 12px; width: 100%; background: #000; border: 1px solid #004400; position: relative; margin-top: 8px; }
+        #volume_bar { height: 100%; width: 0%; background: #00ff00; box-shadow: 0 0 10px #00ff0066; }
+        .viz { height: 100px; width: 100%; border: 1px solid #004400; margin-bottom: 10px; background: #080808; position: relative; }
+        svg { height: 100%; width: 100%; overflow: visible; display: block; }
+        .ctrl-container { display: flex; align-items: center; justify-content: center; height: 190px; margin: 8px 0; border: 1px solid #1a1a1a; background: #0a0a0a; position: relative; overflow: hidden; }
+        input[type="range"] { appearance: none; background: #002200; height: 10px; position: relative; margin: 0; }
+        input[type="range"]::-webkit-slider-thumb { appearance: none; height: 20px; width: 10px; background: #00ff00; border: 1px solid #000; }
+        .slider-h { cursor: ew-resize; max-width: 100%; }
+        .slider-v { transform: rotate(-90deg); cursor: ns-resize; transform-origin: center; }
+        .knob-svg { cursor: ns-resize; touch-action: none; overflow: visible; display: block; margin: auto; max-width: 100%; max-height: 100%; }
+        /* Prevent internal elements from intercepting clicks */
+        .knob-svg * { pointer-events: none; }
+        .knob-track { fill: none; stroke: #1a1a1a; stroke-width: 6; stroke-linecap: round; }
+        .knob-value { fill: none; stroke: #00ff00; stroke-width: 6; stroke-linecap: round; }
+        .knob-center { fill: #111; stroke: #008800; stroke-width: 2; }
+        .knob-indicator { fill: #00ff00; }
+        #audio_btn { width: 100%; padding: 12px; background: #003300; color: #00ff00; border: 1px solid #00ff00; cursor: pointer; font-family: monospace; font-weight: bold; margin-bottom: 8px; font-size: 11px; }
+        #audio_btn.active { background: #ff0000; color: #fff; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="panel">
+    <button id="audio_btn">INITIALIZE ENGINE</button>
+    <div class="master-readout">
+        <div id="db_readout">-- dBFS</div>
+        <div class="bar-container"><div id="volume_bar"></div></div>
+    </div>
+    <div class="viz">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+            <line x1="50" y1="0" x2="50" y2="100" stroke="#003300" stroke-width="0.5" />
+            <path id="curve_path" d="" fill="none" stroke="#00ff00" stroke-width="2" />
+            <circle id="tracker_dot" r="3" fill="#fff" />
+            <circle id="pivot_dot" r="4" fill="#ff0000" style="display:none;" />
+        </svg>
+    </div>
+    <div class="grid">
+        <div class="row"><label>UI Type</label><select id="ui_type"><option value="slider_h">H Slider</option><option value="slider_v">V Slider</option><option value="knob" selected>Rotary Dial</option></select></div>
+        <div class="row"><label>Control Size (%)</label><input type="number" id="ctrl_size_pct" value="75"></div>
+    </div>
+    <div class="grid">
+        <div class="row"><label>Audio Source</label>
+            <select id="source_type">
+                <option value="440">440 Hz Sine</option>
+                <option value="1000">1 kHz Sine</option>
+                <option value="white">White Noise</option>
+                <option value="pink">Pink Noise</option>
+                <option value="file">Local File</option>
+            </select>
+            <div id="file_ui" class="hidden"><input type="file" id="file_input" accept="audio/*"></div>
+        </div>
+        <div class="row"><label>Algorithm</label><select id="logic_type"><option value="linear">Linear</option><option value="log">Logarithmic</option><option value="s_curve">S-Curve</option><option value="inv_sigmoid" selected>Inv-Sigmoid</option></select></div>
+    </div>
+    <div class="grid">
+        <div class="row"><label>Min dBFS</label><input type="number" id="min_db" value="-80"></div>
+        <div class="row"><label>Max dBFS</label><input type="number" id="max_db" value="-14"></div>
+        <div class="row pivot-ui"><label>Pivot dB</label><input type="number" id="pivot_db" value="-40"></div>
+        <div class="row pivot-ui"><label>Pivot %</label><input type="number" id="pivot_pos" value="50"></div>
+    </div>
+    <div class="ctrl-container" id="work_area">
+        <input type="range" id="slider" min="0" max="100" step="0.0001" value="50">
+        <div id="knob_wrapper">
+            <svg id="knob_svg" class="knob-svg" viewBox="0 0 100 100">
+                <path class="knob-track" d="M 30 84.6 A 40 40 0 1 1 70 84.6" />
+                <path id="knob_arc" class="knob-value" d="" />
+                <circle class="knob-center" cx="50" cy="50" r="32" />
+                <circle id="knob_ptr" class="knob-indicator" cx="50" cy="18" r="3" />
+            </svg>
+        </div>
+    </div>
+</div>
+
+<script>
+const el = id => document.getElementById(id);
+let audioCtx, currentSource, gainNode, isRunning = false;
+
+// Audio Node Builders
+function createNoise(type) {
+    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
+    const d = buf.getChannelData(0);
+    if (type === 'white') {
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    } else {
+        let b0=0, b1=0, b2=0, b3=0, b4=0, b5=0, b6=0;
+        for (let i = 0; i < d.length; i++) {
+            const w = Math.random() * 2 - 1;
+            b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750312;
+            b2 = 0.96900 * b2 + w * 0.1538520; b3 = 0.86650 * b3 + w * 0.3104856;
+            b4 = 0.55000 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.0168980;
+            d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11;
+            b6 = w * 0.115926;
+        }
+    }
+    const node = audioCtx.createBufferSource(); node.buffer = buf; node.loop = true; return node;
+}
+
+async function setupSource() {
+    if (currentSource) { try { currentSource.stop(); } catch(e){} currentSource.disconnect(); }
+    const type = el('source_type').value;
+    if (type === 'file') {
+        const files = el('file_input').files;
+        if (!files.length) return;
+        currentSource = audioCtx.createBufferSource();
+        currentSource.buffer = await audioCtx.decodeAudioData(await files[0].arrayBuffer());
+        currentSource.loop = true;
+    } else if (type === 'white' || type === 'pink') {
+        currentSource = createNoise(type);
+    } else {
+        currentSource = audioCtx.createOscillator(); currentSource.frequency.value = parseFloat(type);
+    }
+    currentSource.connect(gainNode);
+    if (isRunning) currentSource.start();
+}
+
+function calculateDb(x) {
+    const max = parseFloat(el('max_db').value), min = parseFloat(el('min_db').value);
+    const pDb = parseFloat(el('pivot_db').value), pPos = parseFloat(el('pivot_pos').value)/100;
+    const mode = el('logic_type').value, val = x / 100;
+    if (mode === 'linear') return min + (val * (max - min));
+    if (mode === 'log') return Math.max(min, max + (20 * Math.log10(val || 1e-10)));
+    const pRatio = (pDb - min) / (max - min), k = 2.5;
+    let ratio = val <= pPos ? pRatio * Math.pow(val/(pPos||0.001), mode==='s_curve'?k:1/k) : pRatio + (1-pRatio)*Math.pow((val-pPos)/(1-pPos||0.001), mode==='s_curve'?1/k:k);
+    return min + (ratio * (max - min));
+}
+
+function update() {
+    const x = parseFloat(el('slider').value), db = calculateDb(x);
+    const max = parseFloat(el('max_db').value), min = parseFloat(el('min_db').value);
+    const uiMode = el('ui_type').value, pct = parseFloat(el('ctrl_size_pct').value) / 100;
+    
+    el('db_readout').innerText = db.toFixed(2) + " dBFS";
+    el('volume_bar').style.width = Math.max(0, Math.min(100, ((db - min) / (max - min)) * 100)) + "%";
+    if (isRunning && gainNode) gainNode.gain.setTargetAtTime(Math.pow(10, db/20), audioCtx.currentTime, 0.015);
+
+    el('slider').classList.toggle('hidden', uiMode === 'knob');
+    el('knob_wrapper').classList.toggle('hidden', uiMode !== 'knob');
+    el('file_ui').classList.toggle('hidden', el('source_type').value !== 'file');
+
+    const area = el('work_area');
+    if (uiMode === 'slider_v') { el('slider').className = 'slider-v'; el('slider').style.width = (area.offsetHeight * pct) + "px"; }
+    else if (uiMode === 'slider_h') { el('slider').className = 'slider-h'; el('slider').style.width = (area.offsetWidth * pct) + "px"; }
+    else { const dim = Math.min(area.offsetWidth, area.offsetHeight) * pct; el('knob_svg').style.width = dim + "px"; el('knob_svg').style.height = dim + "px"; }
+
+    const sweep = (x/100)*300, endAngle = (120+sweep)*(Math.PI/180);
+    el('knob_arc').setAttribute('d', `M ${50+40*Math.cos(120*Math.PI/180)} ${50+40*Math.sin(120*Math.PI/180)} A 40 40 0 ${sweep>180?1:0} 1 ${50+40*Math.cos(endAngle)} ${50+40*Math.sin(endAngle)}`);
+    el('knob_ptr').setAttribute('cx', 50+24*Math.cos(endAngle)); el('knob_ptr').setAttribute('cy', 50+24*Math.sin(endAngle));
+
+    let d = "M ";
+    for (let i=0; i<=100; i++) {
+        const y = 100 - (((calculateDb(i)-min)/(max-min))*100);
+        d += `${i},${y} `;
+        if (Math.abs(i-x) < 0.5) { el('tracker_dot').setAttribute('cx', i); el('tracker_dot').setAttribute('cy', y); }
+    }
+    el('curve_path').setAttribute('d', d);
+
+    const isPivotActive = ['s_curve', 'inv_sigmoid'].includes(el('logic_type').value);
+    if (isPivotActive) {
+        const pY = 100 - (((parseFloat(el('pivot_db').value) - min) / (max - min)) * 100);
+        el('pivot_dot').style.display = 'block';
+        el('pivot_dot').setAttribute('cx', el('pivot_pos').value);
+        el('pivot_dot').setAttribute('cy', Math.max(0, Math.min(100, pY)));
+    } else el('pivot_dot').style.display = 'none';
+}
+
+// Unified Robust Interaction Engine
+let dragData = { active: false, lastY: 0 };
+
+function onDragStart(y) {
+    dragData.active = true;
+    dragData.lastY = y;
+}
+
+function onDragMove(y) {
+    if (!dragData.active) return;
+    const deltaY = dragData.lastY - y;
+    const currentVal = parseFloat(el('slider').value);
+    el('slider').value = Math.max(0, Math.min(100, currentVal + (deltaY * 0.5)));
+    dragData.lastY = y;
+    update();
+}
+
+function onDragEnd() {
+    dragData.active = false;
+}
+
+// Mouse
+el('knob_svg').addEventListener('mousedown', e => onDragStart(e.clientY));
+window.addEventListener('mousemove', e => onDragMove(e.clientY));
+window.addEventListener('mouseup', onDragEnd);
+
+// Touch
+el('knob_svg').addEventListener('touchstart', e => { 
+    onDragStart(e.touches[0].clientY); 
+    e.preventDefault(); 
+}, {passive:false});
+window.addEventListener('touchmove', e => { 
+    if(dragData.active) {
+        onDragMove(e.touches[0].clientY); 
+        e.preventDefault();
+    }
+}, {passive:false});
+window.addEventListener('touchend', onDragEnd);
+
+async function toggleAudio() {
+    if (!audioCtx) audioCtx = new AudioContext();
+    if (!isRunning) {
+        isRunning = true; gainNode = audioCtx.createGain(); gainNode.connect(audioCtx.destination);
+        await setupSource(); el('audio_btn').innerText = "STOP ENGINE"; el('audio_btn').classList.add('active');
+    } else {
+        isRunning = false; if(currentSource) { try{currentSource.stop();}catch(e){} } el('audio_btn').innerText = "INITIALIZE ENGINE"; el('audio_btn').classList.remove('active');
+    }
+    update();
+}
+
+const bind = id => { 
+    el(id).addEventListener('change', async () => { if (isRunning && (id === 'source_type' || id === 'file_input')) await setupSource(); update(); }); 
+    el(id).addEventListener('keydown', e => { if(e.key==='Enter') { update(); e.target.blur(); }}); 
+};
+el('audio_btn').addEventListener('click', toggleAudio);
+el('slider').addEventListener('input', update);
+['min_db', 'max_db', 'pivot_db', 'pivot_pos', 'logic_type', 'ctrl_size_pct', 'ui_type', 'source_type'].forEach(bind);
+update();
+</script>
+</body>
+</html>
+<!DOCTYPE html>
+<html>
+<head>
     <title>Precision Volume Engine + Multi-Source</title>
     <style>
         body { font-family: monospace; background: #050505; color: #00ff00; padding: 20px; display: flex; flex-direction: column; align-items: center; }
