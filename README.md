@@ -48,6 +48,14 @@ dB(max): -0.00 dBFS
 Pivot(%): 90%  
 Pivot(dB): -6 dBFS  
 Notes: I liked that -40 dBFS = 9:00, -20 dBFS = 12:00, -10 dBFS = 3:00  
+
+[Alt-Slope #2] :  
+Curve: Inv-Sigmoid  
+dB(min): -138.47 dBFS  
+dB(max): -0.00 dBFS  
+Pivot(%): 20%  
+Pivot(dB): -30 dBFS  
+Notes: Allows for easier selection of lower dBFS value than (log)  
     
 [16-bit Software Attenuator] :    
 dB(min) = -90.31  
