@@ -25,8 +25,8 @@ IMO, this makes it much easier to casually slide a thumb across a touchscreen to
 
 Here are some of the values that I've found useful/interesting:
   
-[My Yamaha AVR] :    
-Curve: Inv-Sigmoid    
+[My Yamaha AVR] :  
+Curve: Inv-Sigmoid  
 dB(min): -80 dBFS  
 dB(max): -14 dBFS  
 Pivot(%): 50%  
@@ -41,29 +41,37 @@ Pivot(%): 50%
 Pivot(dB): -24 dBFS  
 Notes:  
   
-[Alt-Slope #1] :  
+[Alt-Slope #1] "60 dB" :  
+Curve: Inv-Sigmoid  
+dB(min): -60 dBFS  
+dB(max): -8.00 dBFS  
+Pivot(%): 50%  
+Pivot(dB): -20 dBFS  
+Notes:  Places -40 dBFS @ 9:00, -20 dBFS @ 12:00, -14 dBFS @ 3:00  
+  
+[Alt-Slope #2] "80 dB" :  
 Curve: Inv-Sigmoid  
 dB(min): -80 dBFS  
 dB(max): -0.00 dBFS  
 Pivot(%): 90%  
 Pivot(dB): -6 dBFS  
-Notes: I liked that -40 dBFS = 9:00, -20 dBFS = 12:00, -10 dBFS = 3:00  
+Notes:  Places -40 dBFS @ 9:00, -20 dBFS @ 12:00, -10 dBFS @ 3:00  
 
-[Alt-Slope #2] :  
+[Alt-Slope #3] "90.31 dB (16-bit)" :  
+Curve: Inv-Sigmoid  
+dB(min): -90.31 dBFS  
+dB(max): -0.00 dBFS  
+Pivot(%): 50%  
+Pivot(dB): -12 dBFS  (unity)  
+Notes:  Allows for easier selection of lower dBFS value than (log), places -12 dBFS @ 12:00 
+  
+[Alt-Slope #4] "138.47 dB (24-bit)" :  
 Curve: Inv-Sigmoid  
 dB(min): -138.47 dBFS  
 dB(max): -0.00 dBFS  
-Pivot(%): 20%  
-Pivot(dB): -30 dBFS  
-Notes: Allows for easier selection of lower dBFS value than (log)  
-    
-[16-bit Software Attenuator] :    
-dB(min) = -90.31  
-dB(max) = -0.00 dB  
-  
-[24-bit Software Attenuator] :  
-dB(min) = -138.47  
-dB(max) = -0.00 dB  
+Pivot(%): 50%  
+Pivot(dB): -20 dBFS  (unity)  
+Notes:  Allows for easier selection of lower dBFS value than (log), places -20 dBFS @ 12:00
   
 Note that:    
 Theoretical Bit-Dynamic Range = 20 * log10( 1 / (2^(n-1)) )    
