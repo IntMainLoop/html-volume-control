@@ -1,7 +1,7 @@
 # html-volume-control
 audio volume ui-element demonstrating complex gain curves (linear, log, s-curve, inverse-sigmoid)
 
-<img width="588" height="789" alt="image" src="https://github.com/user-attachments/assets/6d300389-aa3e-4a25-9b82-61f54756fed1" />  
+<img width="638" height="680" alt="image" src="https://github.com/user-attachments/assets/55ffc587-19bd-4dbd-bbda-0d7ecdeb169c" />  
 
 Human hearing is logarithmic, so most of the time, you don't want to control volume with a linear control (like percent). It's just easy to map volume to a linear UI control, so lots of developers do it to make their code work quickly, and then other people learn from their improper examples.
   
