@@ -41,7 +41,7 @@ Pivot(%): 50%
 Pivot(dB): -24 dBFS  
 Notes:  
   
-[Alt-Slope #1] "60 dB" :  
+[Alt-Slope #1] "60 dB Attenuator" :  
 Curve: Inv-Sigmoid  
 dB(min): -60 dBFS  
 dB(max): -8.00 dBFS  
@@ -49,7 +49,7 @@ Pivot(%): 50%
 Pivot(dB): -20 dBFS  
 Notes:  Places -40 dBFS @ 9:00, -20 dBFS @ 12:00, -14 dBFS @ 3:00  
   
-[Alt-Slope #2] "80 dB" :  
+[Alt-Slope #2] "80 dB Attenuator" :  
 Curve: Inv-Sigmoid  
 dB(min): -80 dBFS  
 dB(max): -0.00 dBFS  
@@ -61,20 +61,20 @@ Notes:  Places -40 dBFS @ 9:00, -20 dBFS @ 12:00, -10 dBFS @ 3:00
 Curve: Inv-Sigmoid  
 dB(min): -90.31 dBFS  
 dB(max): -0.00 dBFS  
-Pivot(%): 50%  
-Pivot(dB): -12 dBFS  (unity)  
+Pivot(%): 50% (or 20%)
+Pivot(dB): -12 to -16 dBFS  (i.e., unity / ~85 dBSPL(a) )  
 Notes:  Allows for easier selection of lower dBFS value than (log), places -12 dBFS @ 12:00 
   
 [Alt-Slope #4] "138.47 dB (24-bit)" :  
 Curve: Inv-Sigmoid  
 dB(min): -138.47 dBFS  
 dB(max): -0.00 dBFS  
-Pivot(%): 50%  
-Pivot(dB): -20 dBFS  (unity)  
+Pivot(%): 50% (or 20%)
+Pivot(dB): -14 to -21 dBFS  (i.e., unity / ~85 dBSPL(a) )  
 Notes:  Allows for easier selection of lower dBFS value than (log), places -20 dBFS @ 12:00
   
 Note that:    
-Theoretical Bit-Dynamic Range = 20 * log10( 1 / (2^(n-1)) )    
+'Theoretical Bit-Dynamic-Range' = 20 * log10( 1 / (2^(n-1)) )    
 24-bit audio = -138.47 dBFS (min)  
 16-bit audio =  -90.31 dBFS (min)  
-so it doesn't make any sense to exceed these values.  
+...so it doesn't make any sense to exceed these values.  
