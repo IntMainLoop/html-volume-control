@@ -3,7 +3,7 @@ audio volume ui-element demonstrating complex gain curves (linear, log, s-curve,
 
 <img width="638" height="680" alt="image" src="https://github.com/user-attachments/assets/55ffc587-19bd-4dbd-bbda-0d7ecdeb169c" />  
 
-Human hearing is logarithmic, so most of the time, you don't want to control volume with a linear control (like percent). It's just easy to map volume to a linear UI control, so lots of developers do it to make their code work quickly, and then other people learn from their improper examples.
+Human hearing is logarithmic, so most of the time, you don't want to control volume with a linear control (like the commonly encountered percent-delineated volume control). It's just easy to map volume to a linear UI control, so lots of developers do it to make their code work quickly, and then other people learn from their improper examples.
   
 The following does not apply to 'endless' radial encoders, or to incremental 'paddle' style controls. It only applies to slider and radial controls with a defined start and end position:
   
