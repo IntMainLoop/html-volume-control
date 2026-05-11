@@ -68,7 +68,7 @@ Pivot(dB): -18 dBFS
 Notes:  Places the unity position (e.g., -18 dBFS) at 75% travel and -27 dBFS @ 50% travel. While not creating any positive gain, perhaps this might be ideal for a virtual mixing board's fader?    
 Notes: Using the rotary dial places -40 dBFS @ 10:00, and -18 dBFS @ 2:00 (i.e., not ideal for the rotary control)
   
-[Alt-Slope #4] - "Peak-Level Precision Control" :  
+[Alt-Slope #4] - "Peak-Level Precision Rotary Control" :  
 Curve: Inv-Sigmoid  
 dB(min): -80 dBFS  
 dB(max): -0.00 dBFS  
@@ -76,7 +76,23 @@ Pivot(%): 90%
 Pivot(dB): -1 dBFS  
 Notes:  Places a vertical fader's unity position (e.g., -18 dBFS) at 50% travel.  
 Notes:  Using the rotary dial places -40 dBFS @ 10:00, and -6 dBFS @ 2:00.  
-Notes:  The final 10% of travel becomes highly-precise (perhaps this might be useful for audio mastering, or calibration controls?)    
+Notes:  The final 10% of travel becomes highly-precise (perhaps this might be useful for audio mastering, or calibration controls?)  
+
+["Alt-Slope #5"] - "'Half-S'/'F-curve' for 50% @ -17 dBFS (i.e., +21 dBu max)":  
+Curve: Inv-Sigmoid  
+dB(min): -57 dBFS  
+dB(max): -0.0 dBFS  
+Pivot(%): 100%  
+Pivot(dB): -0.00 dBFS  
+Notes: linear-ish travel across the majority of the control with a log transition to the maximum level
+
+["Alt-Slope #6"] - "'Half-S'/'F-curve' for 50% @ -20 dBFS (i.e., +24 dBu max)":  
+Curve: Inv-Sigmoid  
+dB(min): -67 dBFS  
+dB(max): -0.0 dBFS  
+Pivot(%): 100%  
+Pivot(dB): -0.00 dBFS  
+Notes: linear-ish travel across the majority of the control with a log transition to the maximum level  
   
 [My Yamaha AVR] :  
 Curve: Inv-Sigmoid  
