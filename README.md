@@ -3,9 +3,11 @@ audio volume ui-element demonstrating complex gain curves (linear, log, s-curve,
 
 <img width="638" height="680" alt="image" src="https://github.com/user-attachments/assets/55ffc587-19bd-4dbd-bbda-0d7ecdeb169c" />  
 
-Human hearing is logarithmic, so most of the time, you don't want to control the volume of an audio system using a linear ui control (such as the commonly encountered percent-delineated volume control). Unfortunately, it is extremely easy to map a dBFS volume level to a linear ui control, so lots of developers have done so to get their code working quickly, and then other people have learned from their improper examples. One of the hallmarks of a linear control, is that the control becomes extremely sensitive to the slider's position and users typically notice that '80% of the control's travel is useless.' Make no mistake, the traditional (log) function is pretty much ideal for use as a volume control, but it can also be equally problematic when trying to operate a high-power audio system at a low level. Users correctly notice that 'only the first 20% of the control's travel can be used', making an obvious solution illusive. The S-Curve was developed to make transparent fades, which it does very well, but nothing has really been optimized for the extraordinarily common purpose of selecting a playback volume and to accommodate variations in recorded level. By inverting the S-curve's very steep sloping mid-band to create a gentile, gradually sloping mid-band, the control is intended to be optimized to the user's nominal playback level using the 'Pivot dB' and 'Pivot %' parameters. While sub-optimal for creating smooth fades, the 'Inverse-Sigmoid', is shown to be capable of being optimized for various use cases.  
+Human hearing is logarithmic, so most of the time, you don't want to control the volume of an audio system using a linear ui control (such as the commonly encountered percent-delineated volume control). Unfortunately, it is extremely easy to map a dBFS volume level to a linear ui control, so lots of developers have done so to get their code working quickly, and then other people have learned from their improper examples. This demo allows developers to easily comapare different gain algorithms for their use case, hopefully inspiring more ergonomic control implementations. One of the hallmarks of a linear control assigned to dB units, is that the control often becomes extremely sensitive to the slider's position and users typically notice that '80% of the control's travel is useless.' Make no mistake, the traditional (log) function is pretty much ideal for use as a volume control, but it can also be equally problematic when trying to operate a high-power audio system at a low level. Users correctly notice that 'only the first 20% of the control's travel can be used', making an obvious solution illusive. The S-Curve was developed to make transparent fades, which it does very well, but nothing has really been optimized for the extraordinarily common purpose of selecting a playback volume and to accommodate variations in recorded level via web-designed ui controls. By inverting the S-curve's very steep sloping mid-band to create a gentile, gradually sloping mid-band, the 'Inverse-Sigmoid' control is intended to be optimized to the user's nominal playback level using the 'Pivot dB' and 'Pivot %' parameters. While likely sub-optimal for creating smooth fades, the function is shown to be capable of being optimized for various use cases, and it seems particularly well-suited to radial and slider ui controls.  
   
 The following does not apply to 'endless' radial encoders, or to incremental 'paddle' style controls. It only applies to slider and radial controls with a defined start and end position:
+
+Available Gain Functions:
   
 * Linear:  
 Pretty much only for mic preamps and test equipment. It also makes sense to use linear when the manufacturer uses 0-100 in their API (assuming that they are correctly applying the log conversion in their firmware).  
@@ -16,8 +18,12 @@ THE standard volume control. From radios and guitar amps to televisions and mixi
 * S-Curve:  
 Usually only found in 'fancy' mixing boards or advanced audio editing software, this is essentially two separate curves glued together. This allows for elegant fade-ins and fade-outs on high-end pro audio products.
   
+* POW-n:
+In progress... Coming soon.
+
 * Inverted-Sigmoid:  
-This is the inversion of each section of the aforementioned S-Curve. This is my own unique idea (AFAIK), intended to provide a better user experience while manipulating a typical web-ui slider control associated with audio volume. By defining the user's typical listening level, the majority of the slider's travel can be used for fine-tuning while the full range of the control target is accessible (exponentially) at the extreme ends of the slider.  
+This is the inversion of each section of the aforementioned S-Curve. This is my own unique idea (AFAIK), intended to provide a better user experience while manipulating a typical web-ui slider control associated with audio volume. By defining the user's typical listening level, the majority of the slider's travel can be used for fine-tuning while the full range of the control target is accessible (exponentially) at the extreme ends of the slider.
+
   
 IMO, this makes it much easier to casually slide my thumb across my cellphone to adjust volume without making any massive, unintentional, and sudden volume changes — and critically, it does this without losing access to the full range of the control target, as many other solutions typically require.  
 
@@ -47,18 +53,18 @@ dB(min): -60 dBFS
 dB(max): -8.00 dBFS  
 Pivot(%): 50%  
 Pivot(dB): -20 dBFS  
-Notes:  Places -40 dBFS @ 9:00, -20 dBFS @ 12:00, -14 dBFS @ 3:00  
 Notes:  Makes slider controls easier to use without as much over/under shoot as the log and linear functions.  
-  
+Notes:  Places -40 dBFS @ 9:00, -20 dBFS @ 12:00, -14 dBFS @ 3:00  
+    
 [Alt-Slope #2] - "80 dB Rotary Control" :  
 Curve: Inv-Sigmoid  
 dB(min): -80 dBFS  
 dB(max): -0.00 dBFS  
 Pivot(%): 90%  
 Pivot(dB): -6 dBFS  
+Notes:  This distribution feels highly intuitive on the rotary control  
 Notes:  Places -40 dBFS @ 9:00, -20 dBFS @ 12:00, -10 dBFS @ 3:00  
-Notes:  This distribution feels highly intuitive on the rotary control
-
+  
 [Alt-Slope #3] - "Virtual-Mixing-Board Vertical Fader" :  
 Curve: Inv-Sigmoid  
 dB(min): -80 dBFS  
@@ -66,7 +72,7 @@ dB(max): -0.00 dBFS
 Pivot(%): 75%  
 Pivot(dB): -18 dBFS  
 Notes:  Places the unity position (e.g., -18 dBFS) at 75% travel and -27 dBFS @ 50% travel. While not creating any positive gain, perhaps this might be ideal for a virtual mixing board's fader?    
-Notes: Using the rotary dial places -40 dBFS @ 10:00, and -18 dBFS @ 2:00 (i.e., not ideal for the rotary control)
+Notes: Using the rotary dial places -40 dBFS @ 10:00, and -18 dBFS @ 2:00 (i.e., not ideal for the rotary control)  
   
 [Alt-Slope #4] - "Peak-Level Precision Rotary Control" :  
 Curve: Inv-Sigmoid  
